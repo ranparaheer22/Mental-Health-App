@@ -257,6 +257,7 @@ function nextQ() {
 function prevQ() { if(currentQ>0){currentQ--;updateView();} }
 
 function showResults() {
+  MHC.load(); // reload before saving
   const score = answers.reduce((a,b)=>a+b, 0);
   MHC.session.depressionScore = score;
   MHC.session.depressionAnswers = [...answers];

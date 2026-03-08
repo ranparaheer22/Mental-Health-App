@@ -348,6 +348,7 @@ function updateSlider(el, lblId) {
 }
 
 function saveAndProceed() {
+  MHC.load(); // ensure fresh session before saving
   // Map answers to dataset feature names
   MHC.session.basicAnswers = {
     age:    answers[0],

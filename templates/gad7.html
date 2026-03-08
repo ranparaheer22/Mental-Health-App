@@ -240,6 +240,7 @@ function nextQ() {
 function prevQ() { if(currentQ>0){currentQ--;updateView();} }
 
 function showResults() {
+  MHC.load(); // reload before saving
   const score = answers.reduce((a,b)=>a+b, 0);
   MHC.session.anxietyScore = score;
   MHC.session.anxietyAnswers = [...answers];

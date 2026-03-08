@@ -18,18 +18,18 @@ const MHC = {
   },
 
   save() {
-    try { sessionStorage.setItem('mhc', JSON.stringify(this.session)); } catch(e) {}
+    try { localStorage.setItem('mhc', JSON.stringify(this.session)); } catch(e) {}
   },
 
   load() {
     try {
-      const d = sessionStorage.getItem('mhc');
+      const d = localStorage.getItem('mhc');
       if (d) this.session = { ...this.session, ...JSON.parse(d) };
     } catch(e) {}
   },
 
   clear() {
-    sessionStorage.removeItem('mhc');
+    localStorage.removeItem('mhc');
     this.session = { language:'en', user:{name:'',age:0,gender:'',birthdate:''}, basicAnswers:{}, anxietyAnswers:[], depressionAnswers:[], anxietyScore:0, depressionScore:0, prediction:'', probabilities:{} };
   }
 };
