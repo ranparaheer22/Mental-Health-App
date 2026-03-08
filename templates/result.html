@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Your Result — MHC</title>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <style>
+    .loading-overlay {
+      position: fixed; inset: 0;
+      background: var(--cream);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 100;
+      transition: opacity 0.4s;
+    }
+    .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--sage-pale);
+      border-top-color: var(--sage-deep);
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .dashboard {
+      background: var(--warm-white);
+      border: 1px solid var(--border);
+      padding: 32px;
+      margin: 20px 0;
+    }
+    .prob-bar-row {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+    }
+    .prob-label { width: 180px; font-size: 0.85rem; color: var(--text-mid); flex-shrink:0; }
+    .prob-bar-bg { flex: 1; height: 8px; background: var(--sage-pale); }
+    .prob-bar-fill { height: 100%; background: linear-gradient(90deg, var(--sage-deep), var(--sage-light)); transition: width 1s ease; }
+    .prob-val { width: 40px; text-align: right; font-size: 0.8rem; color: var(--text-soft); }
+
+    .solutions-section { margin-top: 28px; }
+    .accuracy-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px;
+      background: var(--sage-mist);
+      border: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text-mid);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .accuracy-dot { width: 8px; height: 8px; background: var(--sage-deep); }
+  </style>
+</head>
+<body>
+<!-- Loading -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <p class="soft-text" data-t="loading">Analysing your responses...</p>
+  <p class="soft-text" style="font-size:0.78rem;margin-top:6px;opacity:0.6;">KNN model processing</p>
+</div>
+
+<div class="page-wrapper" id="main-content" style="display:none;">
+  <div class="content-box fade-in" style="max-width:800px;">
+    <div class="tagline">Step 5 of 5 — Your Report</div>
+    <h2 style="font-weight:400;margin-bottom:6px;" data-t="resultHeading">Your Mental Health Report</h2>
+    <p class="soft-text" style="margin-bottom:24px;">Based on the K-Nearest Neighbours model trained on 500 samples.</p>
+
+    <!-- PDF printable section -->
+    <div id="pdf-report">
+
+      <div class="accuracy-chip">
+        <div class="accuracy-dot"></div>
+        <span>KNN · 5 Neighbours · Accuracy: <strong id="acc-val">—</strong>%</span>
+      </div>
+
+      <!-- Condition -->
+      <div class="text-center" style="margin:16px 0 24px;">
+        <div class="tagline">Predicted Condition</div>
+        <div id="condition-badge" class="condition-badge" style="font-size:1.1rem;padding:12px 32px;">—</div>
+        <p id="condition-msg" style="margin-top:12px;font-family:var(--font-heading);font-size:1.05rem;color:var(--text-mid);font-style:italic;"></p>
+      </div>
+
+      <!-- Score Summary -->
+      <div class="result-grid">
+        <div class="result-card">
+          <div class="value" id="r-anxiety">—</div>
+          <div class="label" data-t="anxietyScore">Anxiety Score</div>
+          <div style="font-size:0.75rem;color:var(--text-soft);margin-top:4px;">/ 21</div>
+        </div>
+        <div class="result-card">
+          <div class="value" id="r-depression">—</div>
+          <div class="label" data-t="depressionScore">Depression Score</div>
+          <div style="font-size:0.75rem;color:var(--text-soft);margin-top:4px;">/ 27</div>
+        </div>
+      </div>
+
+      <!-- Score meters -->
+      <div style="margin:20px 0;">
+        <div class="meter-container">
+          <div class="progress-label"><span>Anxiety</span><span id="anx-pct-lbl">0%</span></div>
+          <div class="meter-bar"><div class="meter-fill anxiety" id="anx-meter" style="width:0%"></div></div>
+        </div>
+        <div class="meter-container" style="margin-top:12px;">
+          <div class="progress-label"><span>Depression</span><span id="dep-pct-lbl">0%</span></div>
+          <div class="meter-bar"><div class="meter-fill depression" id="dep-meter" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- AI Dashboard -->
+      <div class="dashboard">
+        <div class="tagline">AI Probability Distribution</div>
+        <h3 style="margin-bottom:16px;font-weight:400;">Condition Likelihood</h3>
+        <div id="prob-bars"></div>
+        <div class="chart-container" style="margin-top:16px;">
+          <canvas id="result-chart" width="440" height="220"></canvas>
+        </div>
+      </div>
+
+      <!-- User Data Summary -->
+      <div class="dashboard" style="margin-top:16px;">
+        <div class="tagline">Your Profile</div>
+        <div id="user-stats"></div>
+      </div>
+
+      <!-- Solutions -->
+      <div class="solutions-section">
+        <div class="tagline">Personalised Recommendations</div>
+        <h3 style="margin-bottom:16px;font-weight:400;" data-t="solutions">Based on Your Condition</h3>
+        <ul class="solutions-list" id="solutions-list"></ul>
+      </div>
+
+    </div><!-- /pdf-report -->
+
+    <div class="nav-row" style="margin-top:32px;">
+      <button class="btn btn-outline" onclick="downloadReportAsPDF()">
+        <span data-t="downloadPDF">Download PDF</span>
+      </button>
+      <button class="btn btn-primary" onclick="goEnd()">
+        End →
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/script.js"></script>
+<script>
+const conditionMessages = {
+  en: {
+    'Anxiety':             "Your responses suggest signs of anxiety. Remember: anxiety is manageable with the right tools and support. You are stronger than you think.",
+    'Depression':          "Your responses show signs of depression. Reaching out is itself an act of courage. Better days are always coming — and you deserve them.",
+    'Stress':              "Your responses indicate elevated stress. You have been carrying a heavy load. Learning to set it down, even briefly, can change everything.",
+    'Anxiety+Depression':  "Your responses show signs of both anxiety and depression. Many people experience this combination and recover fully. You are not alone in this.",
+    'No Condition':        "Your responses show no significant mental health concerns at this time. Keep nurturing your mind and wellbeing — you are doing wonderfully."
+  }
+};
+
+const solutionsDB = {
+  'Anxiety': [
+    "Practice diaphragmatic breathing: 4 counts in, hold 4, exhale 6. Repeat 5 times when anxiety peaks.",
+    "Limit caffeine to less than 200mg per day — caffeine amplifies anxiety symptoms significantly.",
+    "Schedule a dedicated 'worry window' of 15 minutes daily to contain anxious thoughts outside that time.",
+    "Try progressive muscle relaxation before bed to release physical tension stored from worry.",
+    "Consider journaling your anxious thoughts — writing them out reduces their power over your mind.",
+    "Ensure 7–8 hours of sleep. Sleep deprivation is one of the strongest anxiety amplifiers."
+  ],
+  'Depression': [
+    "Introduce one small daily pleasure — a short walk, a cup of tea, a favourite song. Consistency beats intensity.",
+    "Aim for 30 minutes of moderate physical activity at least 3 days a week — it directly boosts serotonin.",
+    "Reduce social isolation gradually: even a 10-minute call with someone you trust can lift mood measurably.",
+    "Eat regularly and include omega-3 rich foods (walnuts, flaxseed, fish) — they support brain chemistry.",
+    "Speak with a mental health professional. Depression responds well to therapy, especially CBT.",
+    "Maintain a consistent sleep schedule. Irregular sleep deepens depressive episodes."
+  ],
+  'Stress': [
+    "Identify your top 3 stressors and write down one concrete action you could take for each.",
+    "Use the Pomodoro technique: 25 minutes focused work + 5 minute break. It reduces mental fatigue dramatically.",
+    "Reduce screen time to under 4 hours daily — digital overload is a hidden stress multiplier.",
+    "Spend at least 20 minutes outdoors daily. Nature exposure measurably reduces cortisol levels.",
+    "Learn to say no — overcommitment is a key driver of chronic stress. Protect your energy.",
+    "Practice mindfulness meditation for just 10 minutes daily. Apps like Headspace can help you start."
+  ],
+  'Anxiety+Depression': [
+    "Seek a dual-care approach — both anxiety and depression respond well to integrated therapy like CBT.",
+    "Build a structured daily routine. Predictability reduces anxiety while routine combats depressive inertia.",
+    "Prioritise sleep quality above all — poor sleep is the single largest driver of both conditions simultaneously.",
+    "Avoid alcohol completely during treatment periods — it worsens both anxiety and depression long-term.",
+    "Build one meaningful social connection weekly. Isolation feeds both conditions; connection heals them.",
+    "Consider professional support promptly — combined anxiety-depression responds very well to guided care."
+  ],
+  'No Condition': [
+    "Maintain your current healthy habits — you are clearly doing something right. Celebrate that.",
+    "Build resilience proactively: learn a stress management technique before you need it.",
+    "Continue regular physical activity — it is your single best long-term mental health insurance.",
+    "Practice gratitude journaling: 3 things you are grateful for each evening. It maintains positive affect.",
+    "Invest in your social connections — they are your most powerful buffer against future stress.",
+    "Schedule regular mental health check-ins with yourself, or use this app periodically."
+  ]
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  applyTranslations();
+  runPrediction();
+});
+
+async function runPrediction() {
+  const ba = MHC.session.basicAnswers;
+  const anxScore = MHC.session.anxietyScore || 0;
+  const depScore = MHC.session.depressionScore || 0;
+
+  // Map encoded values back
+  const genderMap = {0:'male', 1:'female', 2:'other'};
+  const sleepMap  = {0:3, 1:4.5, 2:6.5, 3:7.5, 4:9};
+  const workMap   = {0:1, 1:3.5, 2:5.5, 3:7.5, 4:10};
+  const screenMap = {0:1, 1:3.5, 2:5.5, 3:7.5, 4:10};
+
+  const payload = {
+    age:              ba.age || MHC.session.user.age,
+    gender:           genderMap[ba.gender] || 'other',
+    sleep_hours:      sleepMap[ba.sleep] || 7,
+    work_study_hours: workMap[ba.work] || 6,
+    physical_activity:ba.pa || 3,
+    social_interaction: ba.social || 5,
+    stress_level:     Math.round((anxScore/21)*10) || 5,
+    anxiety_score:    anxScore,
+    depression_score: depScore,
+    screen_time:      screenMap[ba.screen] || 5,
+    caffeine:         ba.caff || 2,
+    alcohol:          ba.alco || 1,
+    family_history:   ba.fam  || 0,
+    therapy_history:  ba.therapy || 0
+  };
+
+  try {
+    const res  = await fetch('/predict', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    MHC.session.prediction    = data.prediction;
+    MHC.session.probabilities = data.probabilities;
+    MHC.save();
+    renderResults(data, anxScore, depScore);
+  } catch(e) {
+    // Offline fallback: derive condition from scores
+    let cond = 'No Condition';
+    if (anxScore >= 10 && depScore >= 10) cond = 'Anxiety+Depression';
+    else if (anxScore >= 10) cond = 'Anxiety';
+    else if (depScore >= 10) cond = 'Depression';
+    else if (anxScore >= 5  || depScore >= 5) cond = 'Stress';
+
+    renderResults({ prediction: cond, probabilities:{}, model_accuracy: 0 }, anxScore, depScore);
+  }
+}
+
+function renderResults(data, anxScore, depScore) {
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('main-content').style.display = 'flex';
+
+  const pred = data.prediction;
+  const lang = MHC.session.language || 'en';
+
+  // Accuracy
+  document.getElementById('acc-val').textContent = data.model_accuracy || '—';
+
+  // Condition badge
+  const badge = document.getElementById('condition-badge');
+  badge.textContent = pred;
+  const classMap = {'Anxiety':'anxiety','Depression':'depression','Stress':'stress','Anxiety+Depression':'both','No Condition':'normal'};
+  badge.classList.add(classMap[pred] || 'normal');
+
+  // Condition message
+  const msgs = conditionMessages[lang] || conditionMessages.en;
+  document.getElementById('condition-msg').textContent = msgs[pred] || msgs['No Condition'];
+
+  // Scores
+  document.getElementById('r-anxiety').textContent   = anxScore;
+  document.getElementById('r-depression').textContent = depScore;
+  document.getElementById('anx-pct-lbl').textContent = Math.round((anxScore/21)*100) + '%';
+  document.getElementById('dep-pct-lbl').textContent = Math.round((depScore/27)*100) + '%';
+
+  setTimeout(() => {
+    document.getElementById('anx-meter').style.width = ((anxScore/21)*100)+'%';
+    document.getElementById('dep-meter').style.width = ((depScore/27)*100)+'%';
+  }, 300);
+
+  // Probability bars
+  const probContainer = document.getElementById('prob-bars');
+  const probs = data.probabilities;
+  const condColors = {
+    'Anxiety':'#E8A87C','Depression':'#9575CD','Stress':'#64B5F6',
+    'Anxiety+Depression':'#F48FB1','No Condition':'#81C784'
+  };
+
+  const allConds = ['No Condition','Stress','Anxiety','Depression','Anxiety+Depression'];
+  allConds.forEach(cond => {
+    const pct = probs[cond] || 0;
+    const div = document.createElement('div');
+    div.className = 'prob-bar-row';
+    div.innerHTML = `
+      <span class="prob-label">${cond}</span>
+      <div class="prob-bar-bg">
+        <div class="prob-bar-fill" style="width:0%;background:${condColors[cond]||'#8FAF8A'}" data-target="${pct}"></div>
+      </div>
+      <span class="prob-val">${pct}%</span>`;
+    probContainer.appendChild(div);
+  });
+
+  setTimeout(() => {
+    document.querySelectorAll('.prob-bar-fill').forEach(el => {
+      el.style.width = el.getAttribute('data-target') + '%';
+    });
+  }, 400);
+
+  // Draw donut chart
+  setTimeout(() => {
+    const slices = allConds.map(c => ({
+      value: probs[c] || (c===pred?60:10),
+      color: condColors[c]||'#8FAF8A'
+    }));
+    const total = slices.reduce((a,b)=>a+b.value,0);
+    slices.forEach(s => s.value = (s.value/total)*100);
+    drawDonut('result-chart', slices, `${data.model_accuracy||''}%`);
+  }, 600);
+
+  // User stats
+  const ba = MHC.session.basicAnswers;
+  const statsEl = document.getElementById('user-stats');
+  const user = MHC.session.user;
+  const statRows = [
+    ['Name', user.name||'—'],
+    ['Age', user.age+' years'],
+    ['Gender', ['Male','Female','Other'][ba.gender]||'—'],
+    ['Sleep', ['<4h','4-5h','6-7h','7-8h','>8h'][ba.sleep]||'—'],
+    ['Work/Study', ['0-2h','3-4h','5-6h','7-8h','>8h'][ba.work]||'—'],
+    ['Physical Activity', (ba.pa||0)+' days/week'],
+    ['Screen Time', ['0-2h','3-4h','5-6h','7-8h','>8h'][ba.screen]||'—'],
+    ['Social Score', ba.social+'/10'],
+    ['Caffeine', ['None','Very little','Low','Moderate','High','Very high'][ba.caff]||'—'],
+    ['Alcohol', ['Never','Rarely','Occasionally','Sometimes','Often','Very frequent'][ba.alco]||'—'],
+    ['Family History', ba.fam?'Yes':'No'],
+    ['Prior Therapy', ba.therapy?'Yes':'No'],
+    ['Anxiety Score (GAD-7)', anxScore+' / 21'],
+    ['Depression Score (PHQ-9)', depScore+' / 27']
+  ];
+  statsEl.innerHTML = statRows.map(([k,v]) =>
+    `<div class="stat-row"><span class="stat-key">${k}</span><span class="stat-val">${v}</span></div>`
+  ).join('');
+
+  // Solutions
+  const solutionEl = document.getElementById('solutions-list');
+  const sols = solutionsDB[pred] || solutionsDB['No Condition'];
+  solutionEl.innerHTML = sols.map(s => `<li>${s}</li>`).join('');
+
+  applyTranslations();
+}
+
+function goEnd() {
+  window._disableGuard && window._disableGuard();
+  window.location.href = '/end.html';
+}
+</script>
+</body>
+</html>

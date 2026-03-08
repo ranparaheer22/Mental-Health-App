@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — MHC</title>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <style>
+    .gender-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .form-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media(max-width:520px) {
+      .form-two-col { grid-template-columns: 1fr; }
+      .gender-grid  { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="content-box fade-in">
+    <div class="tagline">Step 1 of 5</div>
+    <h2 data-t="loginBtn" style="font-size:2rem;font-weight:400;margin-bottom:6px;">Tell Us About You</h2>
+    <p class="soft-text" style="margin-bottom:28px;">This information stays private and helps personalise your experience.</p>
+
+    <div class="progress-container">
+      <div class="progress-label">
+        <span>Profile Setup</span><span>1 / 5</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="prog" style="width:0%"></div></div>
+    </div>
+
+    <div class="form-group">
+      <label data-t="namePlaceholder">Full Name</label>
+      <input type="text" id="inp-name" data-t-ph="namePlaceholder" placeholder="Your full name" autocomplete="off"/>
+    </div>
+
+    <div class="form-two-col">
+      <div class="form-group">
+        <label data-t="agePlaceholder">Age</label>
+        <input type="number" id="inp-age" min="5" max="110" data-t-ph="agePlaceholder" placeholder="Your age"/>
+      </div>
+      <div class="form-group">
+        <label data-t="birthdate">Date of Birth</label>
+        <input type="date" id="inp-birth"/>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label data-t="gender">Gender</label>
+      <div class="gender-grid">
+        <label class="option-card">
+          <input type="radio" name="gender" value="male"/>
+          <span data-t="male">Male</span>
+        </label>
+        <label class="option-card">
+          <input type="radio" name="gender" value="female"/>
+          <span data-t="female">Female</span>
+        </label>
+        <label class="option-card">
+          <input type="radio" name="gender" value="other"/>
+          <span data-t="other">Other</span>
+        </label>
+      </div>
+    </div>
+
+    <div id="error-msg" style="display:none;color:#c0392b;font-size:0.85rem;margin-bottom:16px;padding:10px 14px;background:#fdf2f2;border-left:3px solid #c0392b;"></div>
+
+    <div class="nav-row right">
+      <button class="btn btn-primary" onclick="doLogin()">
+        <span data-t="loginBtn">Continue →</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/script.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    setupNavigationGuard();
+    setProgress('prog', 5);
+
+    // Pre-fill if returning
+    if (MHC.session.user.name) {
+      document.getElementById('inp-name').value = MHC.session.user.name;
+      document.getElementById('inp-age').value  = MHC.session.user.age;
+      document.getElementById('inp-birth').value = MHC.session.user.birthdate;
+      const gval = MHC.session.user.gender;
+      document.querySelectorAll('input[name="gender"]').forEach(r => {
+        if (r.value === gval) { r.checked = true; r.closest('.option-card').classList.add('selected'); }
+      });
+    }
+
+    // Auto-fill age from birthdate
+    document.getElementById('inp-birth').addEventListener('change', (e) => {
+      const bd = new Date(e.target.value);
+      const age = new Date().getFullYear() - bd.getFullYear();
+      document.getElementById('inp-age').value = age;
+    });
+
+    applyTranslations();
+  });
+
+  function doLogin() {
+    const name   = document.getElementById('inp-name').value.trim();
+    const age    = parseInt(document.getElementById('inp-age').value);
+    const birth  = document.getElementById('inp-birth').value;
+    const gender = document.querySelector('input[name="gender"]:checked');
+
+    const err = document.getElementById('error-msg');
+
+    if (!name)   { showErr(err, 'Please enter your name.'); return; }
+    if (!age || age < 5 || age > 110) { showErr(err, 'Please enter a valid age (5–110).'); return; }
+    if (!gender) { showErr(err, 'Please select your gender.'); return; }
+
+    err.style.display = 'none';
+
+    MHC.session.user = { name, age, gender: gender.value, birthdate: birth };
+    MHC.save();
+    window._disableGuard && window._disableGuard();
+    window.location.href = '/welcome2.html';
+  }
+
+  function showErr(el, msg) {
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+</script>
+</body>
+</html>

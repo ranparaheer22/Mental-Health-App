@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Thank You — MHC</title>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <style>
+    .quote-card {
+      background: linear-gradient(135deg, var(--sage-mist), rgba(255,255,255,0.8));
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--gold);
+      padding: 24px 28px;
+      margin-bottom: 16px;
+      position: relative;
+      animation: fadeIn 0.5s ease both;
+    }
+    .quote-card:nth-child(2) { animation-delay: 0.15s; }
+    .quote-card:nth-child(3) { animation-delay: 0.3s; }
+    .quote-text {
+      font-family: var(--font-heading);
+      font-size: 1.1rem;
+      color: var(--text-mid);
+      font-style: italic;
+      line-height: 1.7;
+    }
+    .quote-author {
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-top: 10px;
+    }
+    .big-heart {
+      font-size: 3rem;
+      text-align: center;
+      margin: 20px 0;
+      color: var(--sage-light);
+      animation: pulse-glow 2s infinite;
+    }
+    .gratitude-msg {
+      font-family: var(--font-heading);
+      font-size: 1.25rem;
+      color: var(--text-mid);
+      line-height: 1.8;
+      font-style: italic;
+      text-align: center;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="content-box fade-in" style="text-align:center;">
+    <div class="tagline" data-t="endHeading">Thank You</div>
+    <h1 style="font-size:2.8rem;margin-bottom:8px;">You did it. ✦</h1>
+
+    <div class="big-heart">♡</div>
+
+    <p class="gratitude-msg" id="gratitude-msg">
+      We are deeply grateful that you chose to spend this moment with us. Your willingness to reflect on your inner world takes real courage. We hope this experience brought you a little more clarity, and we sincerely wish you wellness, peace, and happiness — today and every day.
+    </p>
+
+    <div class="divider"></div>
+
+    <div style="text-align:left;">
+      <div class="tagline" style="text-align:left;">Words to carry with you</div>
+
+      <div id="quotes-container"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <p class="soft-text" style="margin-bottom:24px;">Your session data has been kept private and will be cleared on logout.</p>
+
+    <button class="btn btn-outline full-width" onclick="doLogout()">
+      <span data-t="logoutBtn">Logout</span>
+    </button>
+  </div>
+</div>
+
+<script src="/static/script.js"></script>
+<script>
+const quotePools = {
+  en: [
+    { text: "You don't have to be positive all the time. It's perfectly okay to feel sad, angry, annoyed, frustrated, scared, or anxious. Having feelings doesn't make you a negative person. It makes you human.", author: "Lori Deschene" },
+    { text: "Mental health is not a destination, but a process. It's about how you drive, not where you're going.", author: "Noam Shpancer" },
+    { text: "Promise me you'll always remember — you're braver than you believe, and stronger than you seem, and smarter than you think.", author: "A.A. Milne" },
+    { text: "Self-care is not self-indulgence, it is self-preservation.", author: "Audre Lorde" },
+    { text: "You are not your illness. You have an individual story to tell. You have a name, a history, a personality. Staying yourself is part of the battle.", author: "Julian Seifter" },
+    { text: "There is hope, even when your brain tells you there isn't.", author: "John Green" },
+    { text: "You are allowed to be both a masterpiece and a work in progress simultaneously.", author: "Sophia Bush" },
+    { text: "Healing is not linear. Some days will be harder than others, and that is okay.", author: "Unknown" },
+    { text: "What mental health needs is more sunlight, more candor, and more unashamed conversation.", author: "Glenn Close" }
+  ],
+  hi: [
+    { text: "आप हमेशा सकारात्मक रहने के लिए बाध्य नहीं हैं। उदास, डरा हुआ या थका हुआ महसूस करना बिल्कुल ठीक है।", author: "लोरी डेशेन" },
+    { text: "मानसिक स्वास्थ्य एक यात्रा है, मंजिल नहीं।", author: "नोम शेपकर" },
+    { text: "आप उससे कहीं अधिक बहादुर हैं जितना आप सोचते हैं।", author: "ए.ए. मिल्ने" }
+  ],
+  gu: [
+    { text: "તમારે હંમેશા સકારાત્મક રહેવાની જરૂર નથી. ઉદાસ કે ભયભીત અનુભવ કરવો ઠીક છે.", author: "લૉરી ડેશૅન" },
+    { text: "માનસિક સ્વાસ્થ્ય એ એક યાત્રા છે, મંઝિલ નહીં.", author: "નૉઍમ શ્પૅન્સર" },
+    { text: "તમે જેટલા વિચારો છો તેના કરતાં ઘણા વધારે હિંમતવાળા છો.", author: "A.A. Milne" }
+  ]
+};
+
+const gratitudeMessages = {
+  en: "We are deeply grateful that you chose to spend this moment with us. Your willingness to reflect on your inner world takes real courage. We hope this experience brought you a little more clarity — and we sincerely wish you wellness, peace, and happiness today and every day.",
+  hi: "हम आभारी हैं कि आपने यह पल हमारे साथ बिताया। अपने मन को समझने की यह कोशिश बहुत साहसी है। हम आपके लिए शांति, स्वास्थ्य और खुशी की कामना करते हैं।",
+  gu: "અમે આભારી છીએ કે તમે આ ક્ષણ અમારી સાથે વિતાવી. તમારી આ હિંમત અને ઇચ્છા ખૂબ સુંદર છે. અમે તમારા માટે શાંતિ, સ્વાસ્થ્ય અને ખુશી ઇચ્છીએ છીએ."
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const lang = MHC.session.language || 'en';
+  const pool = quotePools[lang] || quotePools.en;
+
+  // Pick 3 random non-repeating quotes
+  const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, 3);
+
+  const container = document.getElementById('quotes-container');
+  shuffled.forEach(q => {
+    const div = document.createElement('div');
+    div.className = 'quote-card';
+    div.innerHTML = `
+      <div class="quote-text">"${q.text}"</div>
+      <div class="quote-author">— ${q.author}</div>`;
+    container.appendChild(div);
+  });
+
+  document.getElementById('gratitude-msg').textContent =
+    gratitudeMessages[lang] || gratitudeMessages.en;
+
+  applyTranslations();
+});
+
+function doLogout() {
+  MHC.clear();
+  window._disableGuard && window._disableGuard();
+  window.location.href = '/';
+}
+</script>
+</body>
+</html>

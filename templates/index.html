@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mental Health Condition Classification</title>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <style>
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.2rem, 6vw, 3.8rem);
+      font-weight: 400;
+      color: var(--text-dark);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+    .hero-accent {
+      color: var(--sage-deep);
+      font-style: italic;
+    }
+    .ornament {
+      text-align: center;
+      color: var(--sage-light);
+      font-size: 1.4rem;
+      letter-spacing: 0.6em;
+      margin: 24px 0;
+    }
+    .motive-text {
+      font-family: var(--font-heading);
+      font-size: 1.1rem;
+      color: var(--text-soft);
+      line-height: 1.9;
+      font-weight: 400;
+      text-align: center;
+      font-style: italic;
+    }
+    .lang-label {
+      text-align: center;
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-soft);
+      margin-bottom: 12px;
+      margin-top: 32px;
+    }
+    .begin-row {
+      display: flex;
+      justify-content: center;
+      margin-top: 36px;
+    }
+    .begin-btn {
+      padding: 16px 48px;
+      font-size: 0.85rem;
+      letter-spacing: 0.18em;
+    }
+    .page-footer {
+      margin-top: 28px;
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--text-soft);
+      opacity: 0.6;
+      letter-spacing: 0.1em;
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="content-box fade-in" style="text-align:center;">
+    <div class="tagline">Welcome</div>
+
+    <h1 class="hero-title">
+      Mental Health<br/>
+      <span class="hero-accent" data-t="appName" style="font-size:0.85em;">Condition Classification</span>
+    </h1>
+
+    <div class="ornament">✦ ✦ ✦</div>
+
+    <p class="motive-text" id="motive-text">
+      Your mind matters. This space was built with care — for those who need a quiet moment of reflection, a gentle check-in, or simply someone who listens without judgment. You are not alone.
+    </p>
+
+    <div class="divider"></div>
+
+    <!-- Language Selection -->
+    <div class="lang-label" data-t="selectLang">Choose your language</div>
+    <div class="lang-selector" style="margin:0 auto;">
+      <button class="lang-btn active" data-lang="en" onclick="selectLang('en')">English</button>
+      <button class="lang-btn" data-lang="hi" onclick="selectLang('hi')">हिन्दी</button>
+      <button class="lang-btn" data-lang="gu" onclick="selectLang('gu')">ગુજરાતી</button>
+    </div>
+
+    <div class="begin-row">
+      <button class="btn btn-primary begin-btn" onclick="goLogin()">
+        <span data-t="begin">Begin Your Journey →</span>
+      </button>
+    </div>
+
+    <p class="page-footer">A compassionate tool for self-awareness · Not a medical diagnosis</p>
+  </div>
+</div>
+
+<script src="/static/script.js"></script>
+<script>
+  function selectLang(lang) {
+    setLanguage(lang);
+    document.getElementById('motive-text').textContent = T[lang].motive;
+    document.title = T[lang].appName;
+  }
+
+  function goLogin() {
+    MHC.save();
+    window._disableGuard && window._disableGuard();
+    window.location.href = '/login.html';
+  }
+
+  // Don't block navigation on index page (first load)
+  document.addEventListener('DOMContentLoaded', () => {
+    applyTranslations();
+    // Sync active lang button
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-lang') === MHC.session.language);
+    });
+    document.getElementById('motive-text').textContent = T[MHC.session.language].motive || T.en.motive;
+    document.title = t('appName');
+  });
+</script>
+</body>
+</html>

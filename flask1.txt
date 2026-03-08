@@ -1,0 +1,157 @@
+from flask import Flask, render_template, request
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import LabelEncoder
+
+app = Flask(__name__)
+
+# ==============================
+# LOAD DATASET
+# ==============================
+
+data = pd.read_csv("Dataset.csv")
+
+# Target column (mental condition)
+target_column = "Mental_Health_Condition"
+
+# Remove ID column if present
+if "ID" in data.columns:
+    data = data.drop("ID", axis=1)
+
+# Separate features and target
+X = data.drop(target_column, axis=1)
+y = data[target_column]
+
+# Convert categorical columns to numbers
+label_encoders = {}
+for column in X.columns:
+    if X[column].dtype == 'object':
+        le = LabelEncoder()
+        X[column] = le.fit_transform(X[column])
+        label_encoders[column] = le
+
+# Encode target if needed
+if y.dtype == 'object':
+    target_encoder = LabelEncoder()
+    y = target_encoder.fit_transform(y)
+else:
+    target_encoder = None
+
+# ==============================
+# TRAIN KNN MODEL
+# ==============================
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+model = KNeighborsClassifier(n_neighbors=5)
+model.fit(X_train, y_train)
+
+# ==============================
+# ROUTES
+# ==============================
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/login")
+def login():
+    return render_template("login.html")
+
+@app.route("/welcome2")
+def welcome2():
+    return render_template("welcome2.html")
+
+@app.route("/help")
+def help_page():
+    return render_template("help.html")
+
+@app.route("/questions")
+def questions():
+    return render_template("questions.html")
+
+@app.route("/gad7")
+def gad7():
+    return render_template("gad7.html")
+
+@app.route("/phq9")
+def phq9():
+    return render_template("phq9.html")
+
+@app.route("/end")
+def end():
+    return render_template("end.html")
+
+# ==============================
+# ML PREDICTION
+# ==============================
+
+@app.route("/predict", methods=["POST"])
+def predict():
+    try:
+        # Collect raw form inputs
+        input_data = []
+        for column in X.columns:
+            value = request.form.get(column)
+            if value is None:
+                return f"Missing value for {column}"
+
+            # Encode categorical features using stored LabelEncoders
+            if column in label_encoders:
+                le = label_encoders[column]
+                if value not in le.classes_:
+                    return f"Invalid value '{value}' for {column}"
+                value = le.transform([value])[0]
+            else:
+                value = float(value)  # numerical features
+
+            input_data.append(value)
+
+        input_data = [input_data]  # shape into 2D list for sklearn
+
+        # Predict
+        prediction = model.predict(input_data)[0]
+
+        # Decode target label
+        if target_encoder:
+            predicted_label = target_encoder.inverse_transform([prediction])[0]
+        else:
+            predicted_label = prediction
+
+        # Motivational messages
+        messages = {
+            "Normal": "You seem emotionally balanced. Keep maintaining a healthy lifestyle!",
+            "Stress": "Your mind might be under pressure. Relaxation and time management can help.",
+            "Anxiety": "It seems anxiety is affecting you. Breathing exercises and mindfulness may help.",
+            "Depression": "You may be experiencing depressive symptoms. Talking to someone can help greatly.",
+            "Anxiety+Depression": "You might be facing both anxiety and depression. Professional support can help you recover."
+        }
+
+        message = messages.get(predicted_label, "Take care of your mental wellbeing.")
+
+        return render_template(
+            "result.html",
+            condition=predicted_label,
+            message=message,
+        )
+
+    except Exception as e:
+        return f"Error occurred: {str(e)}"
+
+# ==============================
+# RESULT PAGE
+# ==============================
+
+@app.route("/result")
+def result():
+    return render_template("result.html")
+
+# ==============================
+# RUN SERVER
+# ==============================
+
+if __name__ == "__main__":
+    app.run(debug=True)

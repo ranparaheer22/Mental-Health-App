@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Welcome — MHC</title>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <style>
+    .welcome-name {
+      font-family: var(--font-display);
+      font-size: clamp(2.2rem, 6vw, 3.4rem);
+      color: var(--sage-deep);
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .welcome-msg {
+      font-family: var(--font-heading);
+      font-size: 1.2rem;
+      color: var(--text-mid);
+      line-height: 1.85;
+      font-style: italic;
+      margin: 20px 0 8px;
+    }
+    .age-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      color: var(--sage);
+      margin-bottom: 20px;
+    }
+    .bottom-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 36px;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+<!-- Teen hearts container -->
+<div class="hearts-bg" id="hearts-bg"></div>
+
+<div class="page-wrapper">
+  <div class="content-box fade-in">
+    <div class="tagline" id="greeting-tag">A personal note for you</div>
+
+    <div class="welcome-name" id="welcome-name">Hello, Friend</div>
+
+    <div class="age-badge" id="age-badge">—</div>
+
+    <div class="divider"></div>
+
+    <p class="welcome-msg" id="welcome-msg">
+      Loading your personal message...
+    </p>
+
+    <p class="soft-text" id="welcome-sub" style="margin-top:14px;font-style:normal;"></p>
+
+    <div class="bottom-row">
+      <button class="btn btn-outline" onclick="goHelp()">
+        <span data-t="helpBtn">Help</span>
+      </button>
+      <button class="btn btn-primary" onclick="goProceed()">
+        <span data-t="proceedBtn">Proceed →</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/script.js"></script>
+<script>
+const ageMessages = {
+  child: {
+    en: {
+      tag:  "Hello, Little Friend! 🌱",
+      msg:  "Hello little friend! We are so glad you're here. This small questionnaire will help you talk about how you feel — because every feeling you have is important and valid.",
+      sub:  "Don't worry, there are no right or wrong answers. Just be yourself!"
+    },
+    hi: {
+      tag:  "नमस्ते, छोटे दोस्त! 🌱",
+      msg:  "नमस्ते छोटे दोस्त! हमें बहुत खुशी है कि आप यहाँ हैं। यह छोटी प्रश्नावली आपको यह बताने में मदद करेगी कि आप कैसा महसूस करते हैं।",
+      sub:  "कोई सही या गलत जवाब नहीं है। बस खुद रहें!"
+    },
+    gu: {
+      tag:  "હેલ્લો, નાના મિત્ર! 🌱",
+      msg:  "હેલ્લો નાના મિત્ર! અમને ખૂબ ખુશી છે કે તમે અહીં છો. આ નાની પ્રશ્નાવળી તમને તમારી લાગણીઓ વ્યક્ત કરવામાં મદદ કરશે.",
+      sub:  "કોઈ સાચો કે ખોટો જવાબ નથી. ફક્ત તમારી જાત બનો!"
+    }
+  },
+  teen: {
+    en: {
+      tag:  "Hey, You've Got This 💚",
+      msg:  "Being a teenager is one of the most beautiful, chaotic, and brave things in the world. You're navigating so much — pressure, friendships, the future — all at once. This app sees you, exactly as you are.",
+      sub:  "Take a deep breath. This is a safe space, no judgement here."
+    },
+    hi: {
+      tag:  "हे, तुम यह कर सकते हो 💚",
+      msg:  "किशोर होना दुनिया की सबसे खूबसूरत और साहसी बात है। आप बहुत कुछ नेविगेट कर रहे हैं। यह ऐप आपको बिल्कुल वैसे ही देखता है जैसे आप हैं।",
+      sub:  "एक गहरी सांस लें। यह एक सुरक्षित जगह है।"
+    },
+    gu: {
+      tag:  "હે, તમે આ કરી શકો 💚",
+      msg:  "કિશોર હોવું એ દુનિયામાં સૌથી સુંદર અને હિંમતવાળી વાત છે. આ ઍપ તમને બિલકુલ એ રીતે જુએ છે જે રીતે તમે છો.",
+      sub:  "ઊંડો શ્વાસ લો. આ એક સુરક્ષિત જગ્યા છે."
+    }
+  },
+  adult: {
+    en: {
+      tag:  "Hey Buddy, Keep Going 🌿",
+      msg:  "Hey buddy, You're doing incredibly well managing all the responsibilities life has handed you! Don't stress up more than you need to — you deserve to live with your heart full, not your mind heavy. You showed up today, and that already says everything.",
+      sub:  "A few honest questions, and we'll reflect back what your mind might be carrying."
+    },
+    hi: {
+      tag:  "हे दोस्त, बढ़ते रहो 🌿",
+      msg:  "हे दोस्त, तुम जीवन की सभी जिम्मेदारियों को अच्छे से संभाल रहे हो! जरूरत से ज्यादा तनाव मत लो — तुम दिल से जीने के लायक हो, न कि भारे मन से।",
+      sub:  "कुछ ईमानदार सवाल, और हम आपको बताएंगे कि आपका मन क्या ले जा रहा है।"
+    },
+    gu: {
+      tag:  "હે ભાઈ, આગળ વધો 🌿",
+      msg:  "હે ભાઈ, તમે જીવનની બધી જવાબદારીઓ ખૂબ સારી રીતે સંભાળી રહ્યા છો! જેટલી જરૂર છે તેના કરતાં વધારે તાણ ન લો — તમે દિલ ભરીને જીવવાના લાયક છો.",
+      sub:  "થોડા પ્રામાણિક પ્રશ્નો, અને અમે તમને જણાવીશું કે તમારું મન શું વહન કરી રહ્યું છે."
+    }
+  },
+  senior: {
+    en: {
+      tag:  "A Warm Welcome, Dear Friend 🌸",
+      msg:  "You've done beautifully in your past — a life of experiences, wisdom, and resilience. Whatever is on your mind today, you're not alone. You still look young to us, and your heart still has so many beautiful chapters left to write.",
+      sub:  "Let us walk this small journey with you today."
+    },
+    hi: {
+      tag:  "प्रिय मित्र, आपका स्वागत है 🌸",
+      msg:  "आपने अपने जीवन में बहुत अच्छा किया है। आज जो भी आपके मन में है, आप अकेले नहीं हैं। आप अभी भी हमें जवान लगते हैं, और आपका दिल अभी भी कई सुंदर अध्याय लिखने के लिए तैयार है।",
+      sub:  "आज हमें इस छोटी यात्रा पर आपके साथ चलने दें।"
+    },
+    gu: {
+      tag:  "પ્રિય મિત્ર, આપનું સ્વાગત છે 🌸",
+      msg:  "તમે તમારા જીવનમાં અદ્ભુત કામ કર્યું છે. આજે જે પણ તમારા મનમાં છે, તમે એકલા નથી. તમે આઇ જ યુવાન દેખાઓ છો, અને તમારું હૃદય હજુ ઘણા સુંદર અધ્યાય લખવા માટે તૈયાર છે.",
+      sub:  "આ નાની યાત્રામાં તમારી સાથે ચાલવા દો."
+    }
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupNavigationGuard();
+
+  const { name, age, gender } = MHC.session.user;
+  const lang  = MHC.session.language || 'en';
+  const group = getAgeGroup(age);
+  const msgs  = ageMessages[group][lang] || ageMessages[group]['en'];
+
+  document.getElementById('welcome-name').textContent = t('welcomeBack') + ', ' + (name || 'Friend') + ' ✦';
+  document.getElementById('greeting-tag').textContent = msgs.tag;
+  document.getElementById('welcome-msg').textContent  = msgs.msg;
+  document.getElementById('welcome-sub').textContent  = msgs.sub;
+
+  const ageLabels = { child:'Child (≤12)', teen:'Teenager (13–19)', adult:'Adult (20–60)', senior:'Senior (60+)' };
+  document.getElementById('age-badge').textContent = ageLabels[group] + ' · ' + age + ' years';
+
+  if (group === 'teen') spawnHearts('hearts-bg');
+
+  applyTranslations();
+});
+
+function goHelp()    { window._disableGuard && window._disableGuard(); window.location.href = '/help.html'; }
+function goProceed() { window._disableGuard && window._disableGuard(); window.location.href = '/questions.html'; }
+</script>
+</body>
+</html>

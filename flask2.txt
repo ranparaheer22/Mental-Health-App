@@ -1,0 +1,116 @@
+import pandas as pd
+from flask import Flask, render_template, request, jsonify
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
+app = Flask(__name__)
+
+# --- 1. Load and Prepare Data ---
+def train_model():
+    # Load dataset 
+    df = pd.read_csv('Dataset.csv')
+    
+    # Drop ID as it's not a feature
+    df = df.drop(columns=['ID'])
+    
+    # Encode categorical variables (Gender and Target Condition) 
+    le_gender = LabelEncoder()
+    df['Gender'] = le_gender.fit_transform(df['Gender'])
+    
+    le_condition = LabelEncoder()
+    df['Mental_Health_Condition'] = le_condition.fit_transform(df['Mental_Health_Condition'])
+    
+    # Define features (X) and target (y)
+    X = df.drop(columns=['Mental_Health_Condition'])
+    y = df['Mental_Health_Condition']
+    
+    # Scale features for better KNN performance
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    # Train KNN model
+    knn = KNeighborsClassifier(n_neighbors=5)
+    knn.fit(X_scaled, y)
+    
+    return knn, scaler, le_gender, le_condition
+
+# Initialize components
+model, scaler, gender_encoder, condition_encoder = train_model()
+
+# --- 2. Routes for Navigation ---
+
+@app.route('/')
+def index():
+    return render_template('index.html') # [cite: 4]
+
+@app.route('/login')
+def login():
+    return render_template('login.html') # [cite: 5]
+
+@app.route('/welcome2')
+def welcome2():
+    return render_template('welcome2.html') #
+
+@app.route('/help')
+def help_page():
+    return render_template('help.html') # [cite: 3]
+
+@app.route('/questions')
+def questions():
+    return render_template('questions.html') #
+
+@app.route('/gad7')
+def gad7():
+    return render_template('gad7.html') # [cite: 2]
+
+@app.route('/phq9')
+def phq9():
+    return render_template('phq9.html') # [cite: 7]
+
+@app.route('/result')
+def result_page():
+    return render_template('result.html') #
+
+@app.route('/end')
+def end():
+    return render_template('end.html') # [cite: 6]
+
+# --- 3. Machine Learning Prediction Route ---
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    try:
+        data = request.json
+        
+        # Mapping inputs to dataset columns 
+        # Ensure your JavaScript sends these exact keys
+        features = [
+            int(data['Age']),
+            gender_encoder.transform([data['Gender']])[0],
+            float(data['Sleep_Hours']),
+            float(data['Work_Study_Hours']),
+            int(data['Physical_Activity']),
+            int(data['Social_Interaction']),
+            int(data['Stress_Level']),
+            int(data['Anxiety_Score']),
+            int(data['Depression_Score']),
+            float(data['Screen_Time']),
+            int(data['Caffeine']),
+            int(data['Alcohol']),
+            int(data['Family_History']),
+            int(data['Therapy_History'])
+        ]
+        
+        # Scale and Predict
+        scaled_features = scaler.transform([features])
+        prediction_id = model.predict(scaled_features)
+        condition = condition_encoder.inverse_transform(prediction_id)[0]
+        
+        return jsonify({'condition': condition})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+if __name__ == '__main__':
+    app.run(debug=True)

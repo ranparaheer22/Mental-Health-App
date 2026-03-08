@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Help — MHC</title>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <style>
+    .cloud-bubble { animation-delay: calc(var(--i) * 0.1s); }
+    .cloud-icon {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      background: var(--sage-pale);
+      border: 1px solid var(--border);
+      text-align: center;
+      line-height: 28px;
+      margin-right: 12px;
+      font-size: 0.8rem;
+      color: var(--sage-deep);
+      flex-shrink: 0;
+    }
+    .cloud-bubble {
+      display: flex;
+      align-items: flex-start;
+    }
+    .cloud-bubble::before { display: none; }
+    .cloud-text { flex: 1; }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="content-box fade-in">
+    <div class="tagline">Understanding the App</div>
+    <h2 style="font-weight:400;margin-bottom:6px;">I loved your curious nature!</h2>
+    <p class="soft-text" style="margin-bottom:28px;font-style:italic;">"I loved your confident and curious learning nature! Keep it up, mate!!"</p>
+
+    <div class="divider"></div>
+
+    <div class="cloud-grid">
+      <div class="cloud-bubble" style="--i:0">
+        <span class="cloud-icon">①</span>
+        <span class="cloud-text">This tool contains a set of questions. By answering honestly, you will gain insight into your mental wellbeing and receive a personalised classification.</span>
+      </div>
+      <div class="cloud-bubble" style="--i:1">
+        <span class="cloud-icon">②</span>
+        <span class="cloud-text">After clicking <strong>Proceed</strong>, you will start with the <strong>Basic Questionnaire</strong> — 11 everyday questions about sleep, lifestyle, and habits.</span>
+      </div>
+      <div class="cloud-bubble" style="--i:2">
+        <span class="cloud-icon">③</span>
+        <span class="cloud-text">You will then take the <strong>GAD-7 Anxiety Score Test</strong> — 7 validated questions developed in 2006 to measure the severity of generalised anxiety.</span>
+      </div>
+      <div class="cloud-bubble" style="--i:3">
+        <span class="cloud-icon">④</span>
+        <span class="cloud-text">Next comes the <strong>PHQ-9 Depression Score Test</strong> — 9 clinically validated questions developed in 1999 to measure depression severity.</span>
+      </div>
+      <div class="cloud-bubble" style="--i:4">
+        <span class="cloud-icon">⑤</span>
+        <span class="cloud-text">Your <strong>Result Page</strong> will then show your mental health condition (Anxiety, Stress, Depression, or Normal) along with personalised solutions and a downloadable PDF report.</span>
+      </div>
+      <div class="cloud-bubble" style="--i:5">
+        <span class="cloud-icon">✓</span>
+        <span class="cloud-text">All questions are <strong>compulsory</strong>. Choose the answer that best describes how you feel right now.</span>
+      </div>
+      <div class="cloud-bubble" style="--i:6">
+        <span class="cloud-icon">♡</span>
+        <span class="cloud-text"><strong>Be honest</strong> — this is a safe, private space. Your honesty helps the system truly understand your emotional wellbeing.</span>
+      </div>
+      <div class="cloud-bubble" style="--i:7">
+        <span class="cloud-icon">⚠</span>
+        <span class="cloud-text">Answers are <strong>immutable once submitted</strong> per section. Please fill each section thoughtfully before proceeding.</span>
+      </div>
+      <div class="cloud-bubble" style="--i:8">
+        <span class="cloud-icon">↓</span>
+        <span class="cloud-text">After completing all sections, you can <strong>download your mental health report as a PDF</strong> for personal reference.</span>
+      </div>
+    </div>
+
+    <div class="nav-row" style="margin-top:36px;">
+      <button class="btn btn-outline" onclick="goBack()">← Back</button>
+      <button class="btn btn-primary" onclick="goProceed()">
+        Proceed to Questions →
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/script.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    setupNavigationGuard();
+    applyTranslations();
+  });
+  function goBack()    { window._disableGuard && window._disableGuard(); window.location.href = '/welcome2.html'; }
+  function goProceed() { window._disableGuard && window._disableGuard(); window.location.href = '/questions.html'; }
+</script>
+</body>
+</html>

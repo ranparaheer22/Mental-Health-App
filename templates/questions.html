@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Basic Questions — MHC</title>
+  <link rel="stylesheet" href="/static/style.css"/>
+  <style>
+    .q-wrapper { display: none; }
+    .q-wrapper.active { display: block; }
+    .nav-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 20px 0 8px;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      background: var(--sage-pale);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .dot.done  { background: var(--sage-light); }
+    .dot.active { background: var(--sage-deep); }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 8px;
+    }
+    input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      background: linear-gradient(90deg, var(--sage-deep) var(--pct, 0%), var(--sage-pale) var(--pct, 0%));
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      background: var(--sage-deep);
+      cursor: pointer;
+      border: 2px solid white;
+      box-shadow: 0 2px 6px var(--shadow);
+    }
+    .slider-val {
+      min-width: 48px;
+      text-align: center;
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      color: var(--sage-deep);
+    }
+    .option-card span { pointer-events: none; }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="content-box fade-in">
+    <div class="tagline">Step 2 of 5 — Basic Profile</div>
+    <h2 style="font-weight:400;margin-bottom:24px;" data-t="questionHeading">Answer These Basic Questions</h2>
+
+    <div class="progress-container">
+      <div class="progress-label">
+        <span id="q-label">Question 1 of 11</span>
+        <span id="q-pct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="prog" style="width:0%"></div></div>
+    </div>
+
+    <div class="nav-dots" id="nav-dots"></div>
+
+    <!-- Q1: Age -->
+    <div class="q-wrapper active" id="q0">
+      <div class="question-card">
+        <div class="question-number">Question 1 / 11</div>
+        <div class="question-text">What is your age?</div>
+        <div class="form-group">
+          <input type="number" id="ans0" min="5" max="110" placeholder="Enter your age in years" style="font-size:1.2rem;"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q2: Gender -->
+    <div class="q-wrapper" id="q1">
+      <div class="question-card">
+        <div class="question-number">Question 2 / 11</div>
+        <div class="question-text">What is your gender?</div>
+        <div class="option-grid" style="grid-template-columns:1fr 1fr 1fr;">
+          <label class="option-card"><input type="radio" name="q1" value="0"/><span>Male (0)</span></label>
+          <label class="option-card"><input type="radio" name="q1" value="1"/><span>Female (1)</span></label>
+          <label class="option-card"><input type="radio" name="q1" value="2"/><span>Other (2)</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q3: Sleep -->
+    <div class="q-wrapper" id="q2">
+      <div class="question-card">
+        <div class="question-number">Question 3 / 11</div>
+        <div class="question-text">On average, how many hours do you sleep per night?</div>
+        <div class="option-grid">
+          <label class="option-card"><input type="radio" name="q2" value="0"/><span>Less than 4 hrs</span></label>
+          <label class="option-card"><input type="radio" name="q2" value="1"/><span>4–5 hours</span></label>
+          <label class="option-card"><input type="radio" name="q2" value="2"/><span>6–7 hours</span></label>
+          <label class="option-card"><input type="radio" name="q2" value="3"/><span>7–8 hours</span></label>
+          <label class="option-card"><input type="radio" name="q2" value="4"/><span>More than 8 hrs</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q4: Work/Study -->
+    <div class="q-wrapper" id="q3">
+      <div class="question-card">
+        <div class="question-number">Question 4 / 11</div>
+        <div class="question-text">How many hours per day do you spend working or studying?</div>
+        <div class="option-grid">
+          <label class="option-card"><input type="radio" name="q3" value="0"/><span>0–2 hours</span></label>
+          <label class="option-card"><input type="radio" name="q3" value="1"/><span>3–4 hours</span></label>
+          <label class="option-card"><input type="radio" name="q3" value="2"/><span>5–6 hours</span></label>
+          <label class="option-card"><input type="radio" name="q3" value="3"/><span>7–8 hours</span></label>
+          <label class="option-card"><input type="radio" name="q3" value="4"/><span>More than 8 hrs</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q5: Physical Activity -->
+    <div class="q-wrapper" id="q4">
+      <div class="question-card">
+        <div class="question-number">Question 5 / 11</div>
+        <div class="question-text">How many days per week do you do physical activity?</div>
+        <div class="slider-row">
+          <input type="range" id="ans4" min="0" max="7" value="0" oninput="updateSlider(this,'lbl4')"/>
+          <span class="slider-val" id="lbl4">0</span>
+        </div>
+        <p class="soft-text" style="margin-top:8px;">0 = Never &nbsp;·&nbsp; 7 = Every day</p>
+      </div>
+    </div>
+
+    <!-- Q6: Screen Time -->
+    <div class="q-wrapper" id="q5">
+      <div class="question-card">
+        <div class="question-number">Question 6 / 11</div>
+        <div class="question-text">How many hours per day do you spend on screens (phone, laptop, TV, gaming)?</div>
+        <div class="option-grid">
+          <label class="option-card"><input type="radio" name="q5" value="0"/><span>0–2 hours</span></label>
+          <label class="option-card"><input type="radio" name="q5" value="1"/><span>3–4 hours</span></label>
+          <label class="option-card"><input type="radio" name="q5" value="2"/><span>5–6 hours</span></label>
+          <label class="option-card"><input type="radio" name="q5" value="3"/><span>7–8 hours</span></label>
+          <label class="option-card"><input type="radio" name="q5" value="4"/><span>More than 8 hrs</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q7: Social Interaction -->
+    <div class="q-wrapper" id="q6">
+      <div class="question-card">
+        <div class="question-number">Question 7 / 11</div>
+        <div class="question-text">How would you rate your social interaction with friends and family?</div>
+        <div class="slider-row">
+          <input type="range" id="ans6" min="0" max="10" value="5" oninput="updateSlider(this,'lbl6')"/>
+          <span class="slider-val" id="lbl6">5</span>
+        </div>
+        <p class="soft-text" style="margin-top:8px;">0 = No interaction &nbsp;·&nbsp; 10 = Extremely active</p>
+      </div>
+    </div>
+
+    <!-- Q8: Caffeine -->
+    <div class="q-wrapper" id="q7">
+      <div class="question-card">
+        <div class="question-number">Question 8 / 11</div>
+        <div class="question-text">How much caffeine do you consume daily?</div>
+        <div class="option-grid">
+          <label class="option-card"><input type="radio" name="q7" value="0"/><span>None</span></label>
+          <label class="option-card"><input type="radio" name="q7" value="1"/><span>Very little</span></label>
+          <label class="option-card"><input type="radio" name="q7" value="2"/><span>Low</span></label>
+          <label class="option-card"><input type="radio" name="q7" value="3"/><span>Moderate</span></label>
+          <label class="option-card"><input type="radio" name="q7" value="4"/><span>High</span></label>
+          <label class="option-card"><input type="radio" name="q7" value="5"/><span>Very high</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q9: Alcohol -->
+    <div class="q-wrapper" id="q8">
+      <div class="question-card">
+        <div class="question-number">Question 9 / 11</div>
+        <div class="question-text">How often do you consume alcohol?</div>
+        <div class="option-grid">
+          <label class="option-card"><input type="radio" name="q8" value="0"/><span>Never</span></label>
+          <label class="option-card"><input type="radio" name="q8" value="1"/><span>Rarely</span></label>
+          <label class="option-card"><input type="radio" name="q8" value="2"/><span>Occasionally</span></label>
+          <label class="option-card"><input type="radio" name="q8" value="3"/><span>Sometimes</span></label>
+          <label class="option-card"><input type="radio" name="q8" value="4"/><span>Often</span></label>
+          <label class="option-card"><input type="radio" name="q8" value="5"/><span>Very frequently</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q10: Family History -->
+    <div class="q-wrapper" id="q9">
+      <div class="question-card">
+        <div class="question-number">Question 10 / 11</div>
+        <div class="question-text">Do you have a family history of mental health conditions?</div>
+        <div class="option-grid" style="grid-template-columns:1fr 1fr;">
+          <label class="option-card"><input type="radio" name="q9" value="0"/><span>No</span></label>
+          <label class="option-card"><input type="radio" name="q9" value="1"/><span>Yes</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q11: Therapy -->
+    <div class="q-wrapper" id="q10">
+      <div class="question-card">
+        <div class="question-number">Question 11 / 11</div>
+        <div class="question-text">Have you ever received therapy or counseling for mental health?</div>
+        <div class="option-grid" style="grid-template-columns:1fr 1fr;">
+          <label class="option-card"><input type="radio" name="q10" value="0"/><span>No</span></label>
+          <label class="option-card"><input type="radio" name="q10" value="1"/><span>Yes</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div id="error-banner" style="display:none;color:#c0392b;font-size:0.85rem;padding:10px 14px;background:#fdf2f2;border-left:3px solid #c0392b;margin-bottom:16px;" data-t="required">Please answer this question to continue.</div>
+
+    <div class="nav-row">
+      <button class="btn btn-outline" id="btn-back" onclick="prevQ()" style="display:none;" data-t="backBtn">← Back</button>
+      <button class="btn btn-primary" id="btn-next" onclick="nextQ()">
+        Next →
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/script.js"></script>
+<script>
+let currentQ = 0;
+const TOTAL = 11;
+const answers = new Array(TOTAL).fill(null);
+
+// Slider-based questions
+const sliderQs = [4, 6]; // q4 = index 4, q6 = index 6
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupNavigationGuard();
+  applyTranslations();
+  buildDots();
+  updateView();
+
+  // Pre-fill from session
+  if (MHC.session.basicAnswers && Object.keys(MHC.session.basicAnswers).length > 0) {
+    const ba = MHC.session.basicAnswers;
+    if (ba.age   != null) { answers[0] = ba.age;   document.getElementById('ans0').value = ba.age; }
+    if (ba.gender!= null) { answers[1] = ba.gender; }
+    if (ba.sleep != null) { answers[2] = ba.sleep; }
+    if (ba.work  != null) { answers[3] = ba.work; }
+    if (ba.pa    != null) { answers[4] = ba.pa;   document.getElementById('ans4').value = ba.pa; document.getElementById('lbl4').textContent = ba.pa; }
+    if (ba.screen!= null) { answers[5] = ba.screen; }
+    if (ba.social!= null) { answers[6] = ba.social; document.getElementById('ans6').value = ba.social; document.getElementById('lbl6').textContent = ba.social; }
+    if (ba.caff  != null) { answers[7] = ba.caff; }
+    if (ba.alco  != null) { answers[8] = ba.alco; }
+    if (ba.fam   != null) { answers[9] = ba.fam; }
+    if (ba.therapy!=null) { answers[10]= ba.therapy; }
+  }
+});
+
+function buildDots() {
+  const c = document.getElementById('nav-dots');
+  c.innerHTML = '';
+  for (let i=0; i<TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i===currentQ?' active':'') + (answers[i]!==null?' done':'');
+    d.onclick = () => { if(answers[i]!==null || i===currentQ) jumpTo(i); };
+    c.appendChild(d);
+  }
+}
+
+function updateView() {
+  document.querySelectorAll('.q-wrapper').forEach((el,i) => el.classList.toggle('active', i===currentQ));
+  document.getElementById('btn-back').style.display = currentQ===0 ? 'none' : 'inline-flex';
+
+  const nextBtn = document.getElementById('btn-next');
+  if (currentQ === TOTAL-1) {
+    nextBtn.innerHTML = '<span data-t="clickAnxiety">' + t('clickAnxiety') + '</span>';
+    nextBtn.className = 'btn btn-gold';
+  } else {
+    nextBtn.innerHTML = '<span data-t="nextBtn">Next →</span>';
+    nextBtn.className = 'btn btn-primary';
+  }
+
+  const pct = Math.round((currentQ/TOTAL)*100);
+  setProgress('prog', pct);
+  document.getElementById('q-pct').textContent = pct + '%';
+  document.getElementById('q-label').textContent = 'Question ' + (currentQ+1) + ' of ' + TOTAL;
+
+  document.getElementById('error-banner').style.display = 'none';
+  buildDots();
+
+  // Re-apply saved radio selections
+  for (let i=0; i<TOTAL; i++) {
+    if (answers[i] !== null && !sliderQs.includes(i)) {
+      const r = document.querySelector(`input[name="q${i}"][value="${answers[i]}"]`);
+      if (r) { r.checked = true; r.closest('.option-card').classList.add('selected'); }
+    }
+  }
+  initOptionCards();
+}
+
+function getAnswer(idx) {
+  if (idx === 0)           return document.getElementById('ans0').value !== '' ? parseInt(document.getElementById('ans0').value) : null;
+  if (sliderQs.includes(idx)) {
+    const id = idx===4 ? 'ans4' : 'ans6';
+    return parseInt(document.getElementById(id).value);
+  }
+  const r = document.querySelector(`input[name="q${idx}"]:checked`);
+  return r ? parseInt(r.value) : null;
+}
+
+function nextQ() {
+  const val = getAnswer(currentQ);
+  if (val === null || (currentQ===0 && (isNaN(val)||val<5||val>110))) {
+    document.getElementById('error-banner').style.display = 'block';
+    return;
+  }
+  answers[currentQ] = val;
+
+  if (currentQ === TOTAL-1) {
+    saveAndProceed();
+  } else {
+    currentQ++;
+    updateView();
+  }
+}
+
+function prevQ() {
+  if (currentQ > 0) { currentQ--; updateView(); }
+}
+
+function jumpTo(i) { currentQ = i; updateView(); }
+
+function updateSlider(el, lblId) {
+  const max = parseInt(el.max);
+  const val = parseInt(el.value);
+  document.getElementById(lblId).textContent = val;
+  const pct = (val/max)*100;
+  el.style.setProperty('--pct', pct+'%');
+}
+
+function saveAndProceed() {
+  // Map answers to dataset feature names
+  MHC.session.basicAnswers = {
+    age:    answers[0],
+    gender: answers[1],
+    sleep:  answers[2],
+    work:   answers[3],
+    pa:     answers[4],
+    screen: answers[5],
+    social: answers[6],
+    caff:   answers[7],
+    alco:   answers[8],
+    fam:    answers[9],
+    therapy:answers[10]
+  };
+  MHC.save();
+  window._disableGuard && window._disableGuard();
+  window.location.href = '/gad7.html';
+}
+</script>
+</body>
+</html>
