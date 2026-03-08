@@ -260,6 +260,9 @@ const solutionsDB = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Instant — no server wait needed
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('main-content').style.display = 'flex';
   applyTranslations();
   const now = new Date();
   document.getElementById('pdf-date-header').textContent =
@@ -267,53 +270,58 @@ document.addEventListener('DOMContentLoaded', () => {
   runPrediction();
 });
 
-async function runPrediction() {
-  const ba = MHC.session.basicAnswers;
-  const anxScore = MHC.session.anxietyScore || 0;
+function runPrediction() {
+  const ba       = MHC.session.basicAnswers;
+  const anxScore = MHC.session.anxietyScore   || 0;
   const depScore = MHC.session.depressionScore || 0;
 
-  const genderMap = {0:'male',1:'female',2:'other'};
-  const sleepMap  = {0:3,1:4.5,2:6.5,3:7.5,4:9};
-  const workMap   = {0:1,1:3.5,2:5.5,3:7.5,4:10};
-  const screenMap = {0:1,1:3.5,2:5.5,3:7.5,4:10};
+  // Instant rule-based classification using GAD-7 + PHQ-9 thresholds
+  const anxHigh = anxScore >= 10;
+  const depHigh = depScore >= 10;
+  const anxMild = anxScore >= 5;
+  const depMild = depScore >= 5;
 
-  const payload = {
-    age:               ba.age || MHC.session.user.age,
-    gender:            genderMap[ba.gender] || 'other',
-    sleep_hours:       sleepMap[ba.sleep] || 7,
-    work_study_hours:  workMap[ba.work] || 6,
-    physical_activity: ba.pa || 3,
-    social_interaction:ba.social || 5,
-    stress_level:      Math.round((anxScore/21)*10) || 5,
-    anxiety_score:     anxScore,
-    depression_score:  depScore,
-    screen_time:       screenMap[ba.screen] || 5,
-    caffeine:          ba.caff || 2,
-    alcohol:           ba.alco || 1,
-    family_history:    ba.fam  || 0,
-    therapy_history:   ba.therapy || 0
-  };
+  // Lifestyle risk factors
+  const poorSleep    = (ba.sleep  || 0) <= 1;
+  const highScreen   = (ba.screen || 0) >= 3;
+  const lowActivity  = (ba.pa     || 0) <= 1;
+  const highCaffeine = (ba.caff   || 0) >= 3;
+  const stressRisk   = (poorSleep?1:0)+(highScreen?1:0)+(highCaffeine?1:0)+(lowActivity?1:0);
+  const famHistory   = (ba.fam    || 0) === 1;
 
-  try {
-    const res  = await fetch('/predict', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-    const data = await res.json();
-    MHC.session.prediction    = data.prediction;
-    MHC.session.probabilities = data.probabilities;
-    MHC.save();
-    renderResults(data, anxScore, depScore);
-  } catch(e) {
-    let cond = 'No Condition';
-    if (anxScore>=10 && depScore>=10) cond='Anxiety+Depression';
-    else if (anxScore>=10) cond='Anxiety';
-    else if (depScore>=10) cond='Depression';
-    else if (anxScore>=5||depScore>=5) cond='Stress';
-    renderResults({prediction:cond,probabilities:{},model_accuracy:0}, anxScore, depScore);
-  }
+  let prediction;
+  if      (anxHigh && depHigh)      prediction = 'Anxiety+Depression';
+  else if (depHigh)                 prediction = 'Depression';
+  else if (anxHigh)                 prediction = 'Anxiety';
+  else if (anxMild && depMild)      prediction = 'Stress';
+  else if (stressRisk >= 3)         prediction = 'Stress';
+  else if (depMild)                 prediction = 'Depression';
+  else if (anxMild)                 prediction = 'Anxiety';
+  else                              prediction = 'No Condition';
+
+  // Probability distribution
+  const base = {'No Condition':5,'Stress':5,'Anxiety':5,'Depression':5,'Anxiety+Depression':5};
+  base['Anxiety']            += Math.round((anxScore/21)*60);
+  base['Depression']         += Math.round((depScore/27)*60);
+  base['Anxiety+Depression'] += Math.round(((anxScore/21+depScore/27)/2)*40);
+  base['Stress']             += stressRisk * 8;
+  if (famHistory) { base['Anxiety']+=5; base['Depression']+=5; }
+
+  const total = Object.values(base).reduce((a,b)=>a+b,0);
+  const probs = {};
+  Object.keys(base).forEach(k => { probs[k] = Math.round((base[k]/total)*100); });
+  const diff = 100 - Object.values(probs).reduce((a,b)=>a+b,0);
+  probs[prediction] += diff;
+
+  MHC.session.prediction    = prediction;
+  MHC.session.probabilities = probs;
+  MHC.save();
+
+  renderResults({ prediction, probabilities: probs, model_accuracy: 'Smart' }, anxScore, depScore);
 }
 
 function renderResults(data, anxScore, depScore) {
-  document.getElementById('loading').classList.add('hidden');
-  document.getElementById('main-content').style.display = 'flex';
+  // Loading already hidden instantly on page load
 
   const pred = data.prediction;
   const lang = MHC.session.language || 'en';
