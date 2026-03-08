@@ -2,17 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
   <title>Your Result — MHC</title>
   <link rel="stylesheet" href="/static/style.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     .loading-overlay {
       position: fixed; inset: 0;
       background: var(--cream);
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      z-index: 100;
-      transition: opacity 0.4s;
+      z-index: 100; transition: opacity 0.4s;
     }
     .loading-overlay.hidden { opacity: 0; pointer-events: none; }
     .spinner {
@@ -27,34 +28,60 @@
     .dashboard {
       background: var(--warm-white);
       border: 1px solid var(--border);
-      padding: 32px;
-      margin: 20px 0;
+      padding: 28px; margin: 20px 0;
     }
-    .prob-bar-row {
-      display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
-    }
-    .prob-label { width: 180px; font-size: 0.85rem; color: var(--text-mid); flex-shrink:0; }
-    .prob-bar-bg { flex: 1; height: 8px; background: var(--sage-pale); }
-    .prob-bar-fill { height: 100%; background: linear-gradient(90deg, var(--sage-deep), var(--sage-light)); transition: width 1s ease; }
-    .prob-val { width: 40px; text-align: right; font-size: 0.8rem; color: var(--text-soft); }
+    .prob-bar-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+    .prob-label { width:160px; font-size:0.82rem; color:var(--text-mid); flex-shrink:0; }
+    .prob-bar-bg { flex:1; height:8px; background:var(--sage-pale); min-width:40px; }
+    .prob-bar-fill { height:100%; transition:width 1s ease; }
+    .prob-val { width:36px; text-align:right; font-size:0.78rem; color:var(--text-soft); flex-shrink:0; }
 
-    .solutions-section { margin-top: 28px; }
     .accuracy-chip {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 6px 14px;
-      background: var(--sage-mist);
-      border: 1px solid var(--border);
-      font-size: 0.75rem;
-      color: var(--text-mid);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      margin-bottom: 20px;
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 14px; background:var(--sage-mist);
+      border:1px solid var(--border); font-size:0.75rem;
+      color:var(--text-mid); letter-spacing:0.1em;
+      text-transform:uppercase; margin-bottom:20px;
     }
-    .accuracy-dot { width: 8px; height: 8px; background: var(--sage-deep); }
+    .accuracy-dot { width:8px; height:8px; background:var(--sage-deep); flex-shrink:0; }
+    .solutions-section { margin-top:28px; }
+
+    .btn-download.generating { opacity:0.7; pointer-events:none; }
+    .download-progress { display:none; font-size:0.75rem; color:var(--text-soft); margin-top:8px; text-align:center; }
+    .download-progress.show { display:block; }
+
+    /* PDF header */
+    .pdf-header {
+      background: linear-gradient(135deg, #5E8A5A, #8FAF8A);
+      padding: 20px 28px; margin-bottom: 20px;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 600px) {
+      .prob-label { width: 100px; font-size: 0.72rem; }
+      .prob-val   { width: 28px; font-size: 0.7rem; }
+      .dashboard  { padding: 16px 12px; }
+      .result-grid { grid-template-columns: 1fr 1fr !important; gap: 8px; }
+      .result-card { padding: 14px 8px; }
+      .result-card .value { font-size: 1.5rem; }
+      .content-box { padding: 20px 14px !important; }
+      .accuracy-chip { font-size: 0.65rem; padding: 4px 8px; flex-wrap: wrap; }
+      .nav-row { flex-direction: column; gap: 10px; }
+      .nav-row .btn { width: 100%; justify-content: center; }
+      canvas { max-width: 100% !important; height: auto !important; }
+      .condition-badge { font-size: 0.88rem !important; padding: 8px 16px !important; }
+      h2 { font-size: 1.3rem !important; }
+      .stat-row { font-size: 0.8rem; }
+      .pdf-header { padding: 14px 16px; }
+    }
+    @media (max-width: 380px) {
+      .result-grid { grid-template-columns: 1fr !important; }
+      .prob-label { width: 80px; }
+    }
   </style>
 </head>
 <body>
-<!-- Loading -->
+
 <div class="loading-overlay" id="loading">
   <div class="spinner"></div>
   <p class="soft-text" data-t="loading">Analysing your responses...</p>
@@ -64,95 +91,128 @@
 <div class="page-wrapper" id="main-content" style="display:none;">
   <div class="content-box fade-in" style="max-width:800px;">
     <div class="tagline">Step 5 of 5 — Your Report</div>
-    <h2 style="font-weight:400;margin-bottom:6px;" data-t="resultHeading">Your Mental Health Report</h2>
+    <h2 style="font-weight:400;margin-bottom:6px;">Your Mental Health Report</h2>
     <p class="soft-text" style="margin-bottom:24px;">Based on the K-Nearest Neighbours model trained on 500 samples.</p>
 
-    <!-- PDF printable section -->
-    <div id="pdf-report">
+    <!-- Everything inside here gets captured as a coloured PDF -->
+    <div id="pdf-capture" style="background:#FAFAF7;">
 
-      <div class="accuracy-chip">
-        <div class="accuracy-dot"></div>
-        <span>KNN · 5 Neighbours · Accuracy: <strong id="acc-val">—</strong>%</span>
+      <!-- Coloured header (shows in PDF) -->
+      <div class="pdf-header">
+        <div style="color:rgba(255,255,255,0.8);font-size:0.68rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:4px;">Mental Health Condition Classification</div>
+        <div style="color:white;font-size:1.3rem;font-family:'DM Serif Display',serif;" id="pdf-name-header">Your Report</div>
+        <div style="color:rgba(255,255,255,0.7);font-size:0.75rem;margin-top:4px;" id="pdf-date-header"></div>
       </div>
 
-      <!-- Condition -->
-      <div class="text-center" style="margin:16px 0 24px;">
-        <div class="tagline">Predicted Condition</div>
-        <div id="condition-badge" class="condition-badge" style="font-size:1.1rem;padding:12px 32px;">—</div>
-        <p id="condition-msg" style="margin-top:12px;font-family:var(--font-heading);font-size:1.05rem;color:var(--text-mid);font-style:italic;"></p>
-      </div>
+      <div style="padding:0 6px;">
 
-      <!-- Score Summary -->
-      <div class="result-grid">
-        <div class="result-card">
-          <div class="value" id="r-anxiety">—</div>
-          <div class="label" data-t="anxietyScore">Anxiety Score</div>
-          <div style="font-size:0.75rem;color:var(--text-soft);margin-top:4px;">/ 21</div>
+        <div class="accuracy-chip">
+          <div class="accuracy-dot"></div>
+          <span>KNN · 9 Neighbours · Accuracy: <strong id="acc-val">—</strong>%</span>
         </div>
-        <div class="result-card">
-          <div class="value" id="r-depression">—</div>
-          <div class="label" data-t="depressionScore">Depression Score</div>
-          <div style="font-size:0.75rem;color:var(--text-soft);margin-top:4px;">/ 27</div>
+
+        <!-- Condition -->
+        <div class="text-center" style="margin:16px 0 24px;">
+          <div class="tagline">Predicted Condition</div>
+          <div id="condition-badge" class="condition-badge" style="font-size:1.1rem;padding:12px 32px;">—</div>
+          <p id="condition-msg" style="margin-top:12px;font-family:'Cormorant Garamond',serif;font-size:1.05rem;color:#4A6045;font-style:italic;line-height:1.65;"></p>
         </div>
-      </div>
 
-      <!-- Score meters -->
-      <div style="margin:20px 0;">
-        <div class="meter-container">
-          <div class="progress-label"><span>Anxiety</span><span id="anx-pct-lbl">0%</span></div>
-          <div class="meter-bar"><div class="meter-fill anxiety" id="anx-meter" style="width:0%"></div></div>
+        <!-- Score cards -->
+        <div class="result-grid">
+          <div class="result-card">
+            <div class="value" id="r-anxiety">—</div>
+            <div class="label">Anxiety Score</div>
+            <div style="font-size:0.75rem;color:#7A9475;margin-top:4px;">/ 21</div>
+          </div>
+          <div class="result-card">
+            <div class="value" id="r-depression">—</div>
+            <div class="label">Depression Score</div>
+            <div style="font-size:0.75rem;color:#7A9475;margin-top:4px;">/ 27</div>
+          </div>
         </div>
-        <div class="meter-container" style="margin-top:12px;">
-          <div class="progress-label"><span>Depression</span><span id="dep-pct-lbl">0%</span></div>
-          <div class="meter-bar"><div class="meter-fill depression" id="dep-meter" style="width:0%"></div></div>
+
+        <!-- Meters -->
+        <div style="margin:20px 0;">
+          <div class="meter-container">
+            <div class="progress-label"><span>Anxiety</span><span id="anx-pct-lbl">0%</span></div>
+            <div class="meter-bar"><div class="meter-fill anxiety" id="anx-meter" style="width:0%"></div></div>
+          </div>
+          <div class="meter-container" style="margin-top:12px;">
+            <div class="progress-label"><span>Depression</span><span id="dep-pct-lbl">0%</span></div>
+            <div class="meter-bar"><div class="meter-fill depression" id="dep-meter" style="width:0%"></div></div>
+          </div>
         </div>
-      </div>
 
-      <!-- AI Dashboard -->
-      <div class="dashboard">
-        <div class="tagline">AI Probability Distribution</div>
-        <h3 style="margin-bottom:16px;font-weight:400;">Condition Likelihood</h3>
-        <div id="prob-bars"></div>
-        <div class="chart-container" style="margin-top:16px;">
-          <canvas id="result-chart" width="440" height="220"></canvas>
+        <!-- AI Dashboard -->
+        <div class="dashboard">
+          <div class="tagline">AI Probability Distribution</div>
+          <h3 style="margin-bottom:16px;font-weight:400;">Condition Likelihood</h3>
+          <div id="prob-bars"></div>
+          <div class="chart-container" style="margin-top:16px;">
+            <canvas id="result-chart" width="440" height="220"></canvas>
+          </div>
         </div>
-      </div>
 
-      <!-- User Data Summary -->
-      <div class="dashboard" style="margin-top:16px;">
-        <div class="tagline">Your Profile</div>
-        <div id="user-stats"></div>
-      </div>
+        <!-- Profile -->
+        <div class="dashboard" style="margin-top:16px;">
+          <div class="tagline">Your Profile</div>
+          <div id="user-stats"></div>
+        </div>
 
-      <!-- Solutions -->
-      <div class="solutions-section">
-        <div class="tagline">Personalised Recommendations</div>
-        <h3 style="margin-bottom:16px;font-weight:400;" data-t="solutions">Based on Your Condition</h3>
-        <ul class="solutions-list" id="solutions-list"></ul>
-      </div>
+        <!-- Solutions -->
+        <div class="solutions-section">
+          <div class="tagline">Personalised Recommendations</div>
+          <h3 style="margin-bottom:16px;font-weight:400;">Based on Your Condition</h3>
+          <ul class="solutions-list" id="solutions-list"></ul>
+        </div>
 
-    </div><!-- /pdf-report -->
+        <!-- PDF footer -->
+        <div style="margin-top:28px;padding-top:16px;border-top:1px solid #C8DEC4;text-align:center;">
+          <p style="font-size:0.7rem;color:#7A9475;letter-spacing:0.08em;">
+            Mental Health Condition Classification &nbsp;·&nbsp; KNN Model &nbsp;·&nbsp; Not a medical diagnosis
+          </p>
+        </div>
+
+      </div>
+    </div><!-- /pdf-capture -->
+
+    <div class="download-progress" id="dl-progress">
+      Generating your coloured PDF — please wait, this takes 5–10 seconds ⏳
+    </div>
 
     <div class="nav-row" style="margin-top:32px;">
-      <button class="btn btn-outline" onclick="downloadReportAsPDF()">
-        <span data-t="downloadPDF">Download PDF</span>
+      <button class="btn btn-outline btn-download" id="dl-btn" onclick="downloadColoredPDF()">
+        ⬇ Download Report (PDF)
       </button>
-      <button class="btn btn-primary" onclick="goEnd()">
-        End →
-      </button>
+      <button class="btn btn-primary" onclick="goEnd()">End →</button>
     </div>
   </div>
 </div>
 
-<script src="/static/script.js"></script>
+<script src="/static/app.js"></script>
 <script>
 const conditionMessages = {
   en: {
-    'Anxiety':             "Your responses suggest signs of anxiety. Remember: anxiety is manageable with the right tools and support. You are stronger than you think.",
-    'Depression':          "Your responses show signs of depression. Reaching out is itself an act of courage. Better days are always coming — and you deserve them.",
-    'Stress':              "Your responses indicate elevated stress. You have been carrying a heavy load. Learning to set it down, even briefly, can change everything.",
-    'Anxiety+Depression':  "Your responses show signs of both anxiety and depression. Many people experience this combination and recover fully. You are not alone in this.",
-    'No Condition':        "Your responses show no significant mental health concerns at this time. Keep nurturing your mind and wellbeing — you are doing wonderfully."
+    'Anxiety':            "Your responses suggest signs of anxiety. Remember: anxiety is manageable with the right tools and support. You are stronger than you think.",
+    'Depression':         "Your responses show signs of depression. Reaching out is itself an act of courage. Better days are always coming — and you deserve them.",
+    'Stress':             "Your responses indicate elevated stress. You have been carrying a heavy load. Learning to set it down, even briefly, can change everything.",
+    'Anxiety+Depression': "Your responses show signs of both anxiety and depression. Many people experience this combination and recover fully. You are not alone in this.",
+    'No Condition':       "Your responses show no significant mental health concerns at this time. Keep nurturing your mind and wellbeing — you are doing wonderfully."
+  },
+  hi: {
+    'Anxiety':            "आपकी प्रतिक्रियाएं चिंता के संकेत दिखाती हैं। याद रखें: सही समर्थन से चिंता प्रबंधनीय है।",
+    'Depression':         "आपकी प्रतिक्रियाएं अवसाद के संकेत दिखाती हैं। मदद मांगना खुद साहस का कार्य है।",
+    'Stress':             "आपकी प्रतिक्रियाएं उच्च तनाव का संकेत देती हैं। आप बहुत कुछ उठा रहे हैं।",
+    'Anxiety+Depression': "आपकी प्रतिक्रियाएं चिंता और अवसाद दोनों के संकेत दिखाती हैं। आप अकेले नहीं हैं।",
+    'No Condition':       "आपकी प्रतिक्रियाएं कोई महत्वपूर्ण मानसिक स्वास्थ्य चिंता नहीं दिखाती हैं। बहुत अच्छा!"
+  },
+  gu: {
+    'Anxiety':            "તમારા જવાબો ચિંતાના સંકેત દર્શાવે છે. યોગ્ય સમર્થનથી ચિંતા વ્યવસ્થાપ્ય છે.",
+    'Depression':         "તમારા જવાબો ડિપ્રેશનના સંકેત દર્શાવે છે. મદદ માગવી એ હિંમતનું કાર્ય છે.",
+    'Stress':             "તમારા જવાબો ઊંચા તણાવના સંકેત આપે છે. તમે ઘણું વહન કરી રહ્યા છો.",
+    'Anxiety+Depression': "તમારા જવાબો ચિંતા અને ડિપ્રેશન બંનેના સંકેત દર્શાવે છે. તમે એકલા નથી.",
+    'No Condition':       "તમારા જવાબો કોઈ નોંધપાત્ર માનસિક સ્વાસ્થ્ય ચિંતા દર્શાવતા નથી. ખૂબ સરસ!"
   }
 };
 
@@ -179,7 +239,7 @@ const solutionsDB = {
     "Reduce screen time to under 4 hours daily — digital overload is a hidden stress multiplier.",
     "Spend at least 20 minutes outdoors daily. Nature exposure measurably reduces cortisol levels.",
     "Learn to say no — overcommitment is a key driver of chronic stress. Protect your energy.",
-    "Practice mindfulness meditation for just 10 minutes daily. Apps like Headspace can help you start."
+    "Practice mindfulness meditation for just 10 minutes daily to calm your nervous system."
   ],
   'Anxiety+Depression': [
     "Seek a dual-care approach — both anxiety and depression respond well to integrated therapy like CBT.",
@@ -201,6 +261,9 @@ const solutionsDB = {
 
 document.addEventListener('DOMContentLoaded', () => {
   applyTranslations();
+  const now = new Date();
+  document.getElementById('pdf-date-header').textContent =
+    'Generated on ' + now.toLocaleDateString('en-IN', {day:'numeric', month:'long', year:'numeric'});
   runPrediction();
 });
 
@@ -209,49 +272,42 @@ async function runPrediction() {
   const anxScore = MHC.session.anxietyScore || 0;
   const depScore = MHC.session.depressionScore || 0;
 
-  // Map encoded values back
-  const genderMap = {0:'male', 1:'female', 2:'other'};
-  const sleepMap  = {0:3, 1:4.5, 2:6.5, 3:7.5, 4:9};
-  const workMap   = {0:1, 1:3.5, 2:5.5, 3:7.5, 4:10};
-  const screenMap = {0:1, 1:3.5, 2:5.5, 3:7.5, 4:10};
+  const genderMap = {0:'male',1:'female',2:'other'};
+  const sleepMap  = {0:3,1:4.5,2:6.5,3:7.5,4:9};
+  const workMap   = {0:1,1:3.5,2:5.5,3:7.5,4:10};
+  const screenMap = {0:1,1:3.5,2:5.5,3:7.5,4:10};
 
   const payload = {
-    age:              ba.age || MHC.session.user.age,
-    gender:           genderMap[ba.gender] || 'other',
-    sleep_hours:      sleepMap[ba.sleep] || 7,
-    work_study_hours: workMap[ba.work] || 6,
-    physical_activity:ba.pa || 3,
-    social_interaction: ba.social || 5,
-    stress_level:     Math.round((anxScore/21)*10) || 5,
-    anxiety_score:    anxScore,
-    depression_score: depScore,
-    screen_time:      screenMap[ba.screen] || 5,
-    caffeine:         ba.caff || 2,
-    alcohol:          ba.alco || 1,
-    family_history:   ba.fam  || 0,
-    therapy_history:  ba.therapy || 0
+    age:               ba.age || MHC.session.user.age,
+    gender:            genderMap[ba.gender] || 'other',
+    sleep_hours:       sleepMap[ba.sleep] || 7,
+    work_study_hours:  workMap[ba.work] || 6,
+    physical_activity: ba.pa || 3,
+    social_interaction:ba.social || 5,
+    stress_level:      Math.round((anxScore/21)*10) || 5,
+    anxiety_score:     anxScore,
+    depression_score:  depScore,
+    screen_time:       screenMap[ba.screen] || 5,
+    caffeine:          ba.caff || 2,
+    alcohol:           ba.alco || 1,
+    family_history:    ba.fam  || 0,
+    therapy_history:   ba.therapy || 0
   };
 
   try {
-    const res  = await fetch('/predict', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
+    const res  = await fetch('/predict', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     const data = await res.json();
     MHC.session.prediction    = data.prediction;
     MHC.session.probabilities = data.probabilities;
     MHC.save();
     renderResults(data, anxScore, depScore);
   } catch(e) {
-    // Offline fallback: derive condition from scores
     let cond = 'No Condition';
-    if (anxScore >= 10 && depScore >= 10) cond = 'Anxiety+Depression';
-    else if (anxScore >= 10) cond = 'Anxiety';
-    else if (depScore >= 10) cond = 'Depression';
-    else if (anxScore >= 5  || depScore >= 5) cond = 'Stress';
-
-    renderResults({ prediction: cond, probabilities:{}, model_accuracy: 0 }, anxScore, depScore);
+    if (anxScore>=10 && depScore>=10) cond='Anxiety+Depression';
+    else if (anxScore>=10) cond='Anxiety';
+    else if (depScore>=10) cond='Depression';
+    else if (anxScore>=5||depScore>=5) cond='Stress';
+    renderResults({prediction:cond,probabilities:{},model_accuracy:0}, anxScore, depScore);
   }
 }
 
@@ -262,99 +318,158 @@ function renderResults(data, anxScore, depScore) {
   const pred = data.prediction;
   const lang = MHC.session.language || 'en';
 
-  // Accuracy
+  document.getElementById('pdf-name-header').textContent = 'Report for ' + (MHC.session.user.name || 'User');
   document.getElementById('acc-val').textContent = data.model_accuracy || '—';
 
-  // Condition badge
   const badge = document.getElementById('condition-badge');
   badge.textContent = pred;
   const classMap = {'Anxiety':'anxiety','Depression':'depression','Stress':'stress','Anxiety+Depression':'both','No Condition':'normal'};
-  badge.classList.add(classMap[pred] || 'normal');
+  badge.classList.add(classMap[pred]||'normal');
 
-  // Condition message
   const msgs = conditionMessages[lang] || conditionMessages.en;
   document.getElementById('condition-msg').textContent = msgs[pred] || msgs['No Condition'];
 
-  // Scores
-  document.getElementById('r-anxiety').textContent   = anxScore;
+  document.getElementById('r-anxiety').textContent    = anxScore;
   document.getElementById('r-depression').textContent = depScore;
-  document.getElementById('anx-pct-lbl').textContent = Math.round((anxScore/21)*100) + '%';
-  document.getElementById('dep-pct-lbl').textContent = Math.round((depScore/27)*100) + '%';
+  document.getElementById('anx-pct-lbl').textContent  = Math.round((anxScore/21)*100)+'%';
+  document.getElementById('dep-pct-lbl').textContent  = Math.round((depScore/27)*100)+'%';
 
-  setTimeout(() => {
+  setTimeout(()=>{
     document.getElementById('anx-meter').style.width = ((anxScore/21)*100)+'%';
     document.getElementById('dep-meter').style.width = ((depScore/27)*100)+'%';
   }, 300);
 
-  // Probability bars
   const probContainer = document.getElementById('prob-bars');
   const probs = data.probabilities;
-  const condColors = {
-    'Anxiety':'#E8A87C','Depression':'#9575CD','Stress':'#64B5F6',
-    'Anxiety+Depression':'#F48FB1','No Condition':'#81C784'
-  };
-
+  const condColors = {'Anxiety':'#E8A87C','Depression':'#9575CD','Stress':'#64B5F6','Anxiety+Depression':'#F48FB1','No Condition':'#81C784'};
   const allConds = ['No Condition','Stress','Anxiety','Depression','Anxiety+Depression'];
+
   allConds.forEach(cond => {
-    const pct = probs[cond] || 0;
+    const pct = probs[cond]||0;
     const div = document.createElement('div');
     div.className = 'prob-bar-row';
     div.innerHTML = `
       <span class="prob-label">${cond}</span>
-      <div class="prob-bar-bg">
-        <div class="prob-bar-fill" style="width:0%;background:${condColors[cond]||'#8FAF8A'}" data-target="${pct}"></div>
-      </div>
+      <div class="prob-bar-bg"><div class="prob-bar-fill" style="width:0%;background:${condColors[cond]||'#8FAF8A'}" data-target="${pct}"></div></div>
       <span class="prob-val">${pct}%</span>`;
     probContainer.appendChild(div);
   });
 
-  setTimeout(() => {
-    document.querySelectorAll('.prob-bar-fill').forEach(el => {
-      el.style.width = el.getAttribute('data-target') + '%';
-    });
-  }, 400);
+  setTimeout(()=>{ document.querySelectorAll('.prob-bar-fill').forEach(el=>{ el.style.width=el.getAttribute('data-target')+'%'; }); }, 400);
 
-  // Draw donut chart
-  setTimeout(() => {
-    const slices = allConds.map(c => ({
-      value: probs[c] || (c===pred?60:10),
-      color: condColors[c]||'#8FAF8A'
-    }));
-    const total = slices.reduce((a,b)=>a+b.value,0);
-    slices.forEach(s => s.value = (s.value/total)*100);
+  setTimeout(()=>{
+    const slices = allConds.map(c=>({value:probs[c]||(c===pred?60:10), color:condColors[c]||'#8FAF8A'}));
+    const total  = slices.reduce((a,b)=>a+b.value,0);
+    slices.forEach(s=>s.value=(s.value/total)*100);
     drawDonut('result-chart', slices, `${data.model_accuracy||''}%`);
   }, 600);
 
-  // User stats
-  const ba = MHC.session.basicAnswers;
-  const statsEl = document.getElementById('user-stats');
+  const ba   = MHC.session.basicAnswers;
   const user = MHC.session.user;
   const statRows = [
-    ['Name', user.name||'—'],
-    ['Age', user.age+' years'],
-    ['Gender', ['Male','Female','Other'][ba.gender]||'—'],
-    ['Sleep', ['<4h','4-5h','6-7h','7-8h','>8h'][ba.sleep]||'—'],
-    ['Work/Study', ['0-2h','3-4h','5-6h','7-8h','>8h'][ba.work]||'—'],
-    ['Physical Activity', (ba.pa||0)+' days/week'],
-    ['Screen Time', ['0-2h','3-4h','5-6h','7-8h','>8h'][ba.screen]||'—'],
-    ['Social Score', ba.social+'/10'],
-    ['Caffeine', ['None','Very little','Low','Moderate','High','Very high'][ba.caff]||'—'],
-    ['Alcohol', ['Never','Rarely','Occasionally','Sometimes','Often','Very frequent'][ba.alco]||'—'],
-    ['Family History', ba.fam?'Yes':'No'],
-    ['Prior Therapy', ba.therapy?'Yes':'No'],
-    ['Anxiety Score (GAD-7)', anxScore+' / 21'],
-    ['Depression Score (PHQ-9)', depScore+' / 27']
+    ['Name',user.name||'—'],['Age',user.age+' years'],
+    ['Gender',['Male','Female','Other'][ba.gender]||'—'],
+    ['Sleep',['<4h','4-5h','6-7h','7-8h','>8h'][ba.sleep]||'—'],
+    ['Work/Study',['0-2h','3-4h','5-6h','7-8h','>8h'][ba.work]||'—'],
+    ['Physical Activity',(ba.pa||0)+' days/week'],
+    ['Screen Time',['0-2h','3-4h','5-6h','7-8h','>8h'][ba.screen]||'—'],
+    ['Social Score',(ba.social||0)+'/10'],
+    ['Caffeine',['None','Very little','Low','Moderate','High','Very high'][ba.caff]||'—'],
+    ['Alcohol',['Never','Rarely','Occasionally','Sometimes','Often','Very frequent'][ba.alco]||'—'],
+    ['Family History',ba.fam?'Yes':'No'],['Prior Therapy',ba.therapy?'Yes':'No'],
+    ['Anxiety (GAD-7)',anxScore+' / 21'],['Depression (PHQ-9)',depScore+' / 27']
   ];
-  statsEl.innerHTML = statRows.map(([k,v]) =>
-    `<div class="stat-row"><span class="stat-key">${k}</span><span class="stat-val">${v}</span></div>`
-  ).join('');
+  document.getElementById('user-stats').innerHTML = statRows.map(([k,v])=>
+    `<div class="stat-row"><span class="stat-key">${k}</span><span class="stat-val">${v}</span></div>`).join('');
 
-  // Solutions
-  const solutionEl = document.getElementById('solutions-list');
-  const sols = solutionsDB[pred] || solutionsDB['No Condition'];
-  solutionEl.innerHTML = sols.map(s => `<li>${s}</li>`).join('');
+  const sols = solutionsDB[pred]||solutionsDB['No Condition'];
+  document.getElementById('solutions-list').innerHTML = sols.map(s=>`<li>${s}</li>`).join('');
 
   applyTranslations();
+}
+
+// ── Coloured PDF — works on ALL devices including mobile, no printer needed ──
+async function downloadColoredPDF() {
+  const btn      = document.getElementById('dl-btn');
+  const progress = document.getElementById('dl-progress');
+
+  btn.classList.add('generating');
+  btn.textContent = '⏳ Generating PDF...';
+  progress.classList.add('show');
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const element   = document.getElementById('pdf-capture');
+
+    // Temporarily set fixed width for consistent PDF capture
+    const origStyle = element.getAttribute('style') || '';
+    element.style.width    = '780px';
+    element.style.minWidth = '780px';
+
+    await new Promise(r => setTimeout(r, 400));
+
+    const canvas = await html2canvas(element, {
+      scale:           2,
+      useCORS:         true,
+      backgroundColor: '#FAFAF7',
+      logging:         false,
+      windowWidth:     800,
+      allowTaint:      true
+    });
+
+    // Restore original style
+    element.setAttribute('style', origStyle);
+
+    const { jsPDF: PDF } = window.jspdf;
+    const pdf    = new PDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pageW  = pdf.internal.pageSize.getWidth();   // 210mm
+    const pageH  = pdf.internal.pageSize.getHeight();  // 297mm
+    const margin = 10;
+    const imgW   = pageW - margin * 2;
+    const imgH   = (canvas.height / canvas.width) * imgW;
+
+    // Split into pages if content is longer than one page
+    const pageContentH = pageH - margin * 2;
+    let   renderedH    = 0;
+
+    while (renderedH < imgH) {
+      const sliceH     = Math.min(pageContentH, imgH - renderedH);
+      const srcYRatio  = renderedH / imgH;
+      const srcHRatio  = sliceH   / imgH;
+
+      const sliceCanvas     = document.createElement('canvas');
+      sliceCanvas.width     = canvas.width;
+      sliceCanvas.height    = Math.round(srcHRatio * canvas.height);
+      const ctx             = sliceCanvas.getContext('2d');
+      ctx.drawImage(
+        canvas,
+        0, Math.round(srcYRatio * canvas.height),
+        canvas.width, sliceCanvas.height,
+        0, 0,
+        canvas.width, sliceCanvas.height
+      );
+
+      pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', margin, margin, imgW, sliceH);
+      renderedH += sliceH;
+
+      if (renderedH < imgH) pdf.addPage();
+    }
+
+    const name = (MHC.session.user.name || 'User').replace(/\s+/g,'_');
+    pdf.save(`MHC_Report_${name}.pdf`);
+
+    btn.classList.remove('generating');
+    btn.textContent = '✅ Downloaded!';
+    progress.classList.remove('show');
+    setTimeout(()=>{ btn.textContent = '⬇ Download Report (PDF)'; }, 3000);
+
+  } catch(err) {
+    console.error('PDF error:', err);
+    btn.classList.remove('generating');
+    btn.textContent = '⬇ Download Report (PDF)';
+    progress.classList.remove('show');
+    alert('Could not generate PDF. Please try again.');
+  }
 }
 
 function goEnd() {
