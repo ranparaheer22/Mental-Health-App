@@ -271,9 +271,26 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function runPrediction() {
-  const ba       = MHC.session.basicAnswers;
+  // Reload session to make sure we have latest data
+  MHC.load();
+
+  const ba       = MHC.session.basicAnswers   || {};
   const anxScore = MHC.session.anxietyScore   || 0;
   const depScore = MHC.session.depressionScore || 0;
+
+  // Safety check — if no data at all, show a message and redirect
+  if (!MHC.session.user || !MHC.session.user.name) {
+    document.getElementById('main-content').style.display = 'flex';
+    document.getElementById('condition-badge').textContent = 'Session Expired';
+    document.getElementById('condition-msg').textContent =
+      'Your session data was not found. Please go back to the beginning and complete all questions again.';
+    document.getElementById('condition-badge').className = 'condition-badge normal';
+    const backBtn = document.createElement('div');
+    backBtn.style = 'text-align:center;margin-top:24px;';
+    backBtn.innerHTML = '<a href="/" class="btn btn-primary">Start Over →</a>';
+    document.getElementById('pdf-capture').appendChild(backBtn);
+    return;
+  }
 
   // Instant rule-based classification using GAD-7 + PHQ-9 thresholds
   const anxHigh = anxScore >= 10;
